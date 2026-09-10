@@ -3509,7 +3509,7 @@ function committeeSummary(){
   // C was counting CSE2010 Operating Systems even though Table V already counts it
   // as struck, so Table II printed 22 against rows summing to 19 and the same three
   // credits were carried twice in the Table VII summary.
-  const t5Ids=new Set((cls.t5r||[]).map(s=>s.id));
+  const t5Ids=new Set(caseInfo().hasT5?(cls.t5r||[]).map(s=>s.id):[]);
   // v7.51 — B is Table I's own "Total Number of credits Earned", not a re-derivation
   const B=t1Totals().earned;
   const C=subjects.filter(s=>isClearable(s)&&!dupL[s.id]&&!t5Ids.has(s.id)).reduce((a,s)=>a+resolvedCredit(s),0)
@@ -5041,8 +5041,8 @@ function updateCaseTypeNote(){
   if(!sel||!note)return;
   const info=CASE_TERMS[sel.value]||CASE_TERMS.readmission;
   note.innerHTML=sel.value==='transfer'
-    ?'\u26a0 No signed EF-2 template supplied for Transfer yet \u2014 wording below follows the same pattern as the Rejoining template by inference.'
-    :`Tables I, III, IV, VI, VII will read "New (${info.adj}) PRC" and row 5 will read "Batch and Semester of ${info.noun}" throughout.`;
+    ?'Transfer uses the official five-table layout: Tables I\u2013IV, V Basket Mapping, and VI Summary. Failed or unmapped courses stay in Table II because Transfer has no removal table.'
+    :`${info.label} uses Tables I\u2013VII. Table I\u2013IV labels and row 5 follow the ${info.label.toLowerCase()} case wording.`;
 }
 function toggleStudentMore(){
   const box=document.getElementById('s-more');
@@ -5917,10 +5917,10 @@ function annexureClassify(){
       // backlog to clear: it is taught again as part of the remaining programme, so
       // the old entry is struck from the transcript (Table V) rather than carried as
       // an F/NP to be cleared (Table II). This is the specimen's Operating Systems.
-      if(st!=='completed')cat=(r&&ns&&ns.sem>=r)?'T5':'T2';
+      if(st!=='completed')cat=(caseInfo().hasT5&&r&&ns&&ns.sem>=r)?'T5':'T2';
       else if(r&&ns&&ns.sem>=r)cat='T3';
       else cat='T1';
-    }else cat=(st==='completed')?'T3u':'T5';            // v6.5 specimen rule: passed but unmapped → Table III
+    }else cat=(st==='completed')?'T3u':(caseInfo().hasT5?'T5':'T2'); // Transfer has no Table V
                                                         // (exemption); not passed and unmapped → Table V (removal)
     return{c,eq,ns,st,cat,dupReg:!!(c.code&&mappedOld.has(cdKey(c.code)))};
   });
@@ -5952,13 +5952,13 @@ function annexureClassify(){
            var n=0;try{n=t1SemOf(s);}catch(_){}
            return !(r&&n>=r);                                  // the Table II ones
          }),
-         t5r:subjects.filter(function(s){
+         t5r:caseInfo().hasT5?subjects.filter(function(s){
            if(s.additional||!isClearable(s))return false;
            if(r&&Number(s.sem)>=r)return false;               // an upcoming-semester row is not Table I
            if(noRightIds.has(s.id))return true;
            var n=0;try{n=t1SemOf(s);}catch(_){}
            return !!(r&&n>=r);
-         })};
+         }):[]};
 }
 const CAT_META={T1:['Transferred','var(--accent)','var(--accent-light)'],T2:['→ Table II','var(--red)','var(--red-bg)'],T3:['→ Table III','var(--green)','var(--green-bg)'],T3u:['→ Table III (exempt)','var(--green)','var(--green-bg)'],T5:['→ Table V','var(--ink4)','var(--surface2)'],
   // v7.6 — a New-PRC course with no old equivalent is not removed from anything: the
@@ -12027,7 +12027,7 @@ ${t1CancelCount()?`<button class="cxpill" title="${t1CancelCount()} course(s) ta
   <table style="max-width:900px"><thead><tr><th style="width:110px;text-align:center">Basket</th>
     <th style="text-align:center">Minimum Credits to be completed for the award of the Degree</th>
     <th style="text-align:center">Credits Completed <i>(as per Tables I and III)</i></th>
-    <th style="text-align:center">Credits to be completed from the time of readmission <i>(including the courses listed in Tables II and IV)</i></th>
+    <th style="text-align:center">Credits to be completed from the time of ${settings.caseType==='transfer'?'admission':settings.caseType==='rejoining'?'rejoining':'readmission'} <i>(including the courses listed in Tables II and IV)</i></th>
     <th class="ax-only" style="width:56px">edit</th></tr></thead><tbody>
     ${t6rows.map(r=>`<tr class="${r.strike?'ax-strike':''}">
       <td style="text-align:center"><b>${mc(r.p+'.k',basketPrint(r.a.k))}</b></td>
