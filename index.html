@@ -295,6 +295,7 @@ body.drag-fail .paper tr[ondrop]>td{background:#fbeeed}
 .mk-slot-sub{font-size:10.5px;color:var(--ink4)}
 .mk-slot-actions{display:flex;gap:6px;margin-top:auto}
 .mv-frame{width:100%;height:64vh;border:1px solid var(--border2);border-radius:8px;background:#fff}
+.mv-image{display:block;width:100%;height:64vh;object-fit:contain;border:1px solid var(--border2);border-radius:8px;background:#fff}
 .mv-pre{width:100%;height:64vh;overflow:auto;border:1px solid var(--border2);border-radius:8px;background:var(--surface2);padding:10px;font-family:'IBM Plex Mono',monospace;font-size:11px;white-space:pre-wrap;margin:0;box-sizing:border-box}
 .bt-drop{border:2px dashed var(--border2);border-radius:14px;padding:26px;text-align:center;color:var(--ink3);background:var(--surface);cursor:pointer}
 .bt-drop.dragover{border-color:var(--accent);background:var(--accent-light)}
@@ -1173,7 +1174,7 @@ body.pre-auth .topbar,body.pre-auth .main,body.pre-auth #gcatFab,body.pre-auth #
   <div class="mk-grid" id="marksGrid"></div>
   <div id="marksPreview" style="margin-top:16px"></div>
   <div class="mk-bar" id="marksBar"></div>
-  <input type="file" id="marksFileInput" accept=".pdf,.xlsx,.xls,.csv,.txt" multiple style="display:none"/>
+  <input type="file" id="marksFileInput" accept=".pdf,.xlsx,.xls,.csv,.txt,.jpg,.jpeg,.png,.webp" multiple style="display:none"/>
 </div>
 
 <div class="modal-overlay" id="marksPasteOverlay">
@@ -7351,7 +7352,7 @@ function marksAssignSlot(fileName,parsedSem,parsedTerm){
   if(parsedSem)return occupied(parsedSem-1)?addExtraSlot('Semester '+parsedSem+' (extra) — '+(tm||fileName)):parsedSem-1;
   return addExtraSlot(tm||fileName||'Extra sheet');
 }
-function marksHandleFiles(files,slotIdx){
+function marksHandleFiles(files,slotIdx,stayOnMarks){
   const list=Array.from(files||[]).filter(Boolean);
   if(!list.length)return;
   let pending=list.length,firstPdf=null;
@@ -7362,7 +7363,7 @@ function marksHandleFiles(files,slotIdx){
     if(__db){__db.style.display='inline-block';__db.textContent='✓ Uploaded — '+marksData.filter(d=>d.courses.length).length+' sheet(s)';}
     // do NOT auto-open the PDF in an iframe — a large/odd PDF in the browser plugin can freeze the tab.
     if(firstPdf!==null){const d2=marksData[firstPdf];if(d2)toast('✓ '+(d2.file||'sheet')+' parsed — '+(d2.courses?d2.courses.length:0)+' course(s). Commit to split.','success');}
-    setTimeout(()=>{if(typeof marksAutoAbsorb==='function')marksAutoAbsorb();},250);   // marksheet subjects flow into Table I automatically
+    setTimeout(()=>{if(typeof marksAutoAbsorb==='function')marksAutoAbsorb();if(stayOnMarks)navTo('marks');},250);   // marksheet subjects flow into Table I automatically
   };
   list.forEach(f=>{
     const nm=(f.name||'').toLowerCase();
@@ -7383,6 +7384,9 @@ function marksHandleFiles(files,slotIdx){
         finish(p.courses,p.sem,p.term,p.courses.length?'':'No text layer found (scanned PDF?) — use 📋 Paste','pdf',text);
       }catch(e){finish([],null,'','Could not read PDF — use 📋 Paste','pdf','');}};
       rd.readAsArrayBuffer(f);
+    }else if(f.type&&f.type.startsWith('image/')){
+      rd.onload=()=>finish([],null,'','Scanned image — add the rows by hand beside the document','image','');
+      rd.readAsDataURL(f);
     }else if(nm.endsWith('.txt')){
       rd.onload=()=>{const p=parseGradeCardText(rd.result,slotIdx!==undefined&&slotIdx!==null?marksData[slotIdx].semHint:null);if(p.who)applyStudentFromSheet(p.who);finish(p.courses,p.sem,p.term,'','text',String(rd.result||''));};
       rd.readAsText(f);
@@ -7448,6 +7452,16 @@ function openMarksView(i){
       hint.textContent='Original document (browser viewer) — type what you see into the rows on the right';
       shown=true;
     }catch(e){}
+  }
+  if(!shown){
+    if(d.blob&&d.kind==='image'){
+      try{
+        __mvUrl=URL.createObjectURL(d.blob);
+        docBox.innerHTML=`<img class="mv-image" src="${__mvUrl}" alt="scanned marks sheet"/>`;
+        hint.textContent='Scanned image — type what you see into the rows on the right';
+        shown=true;
+      }catch(e){}
+    }
   }
   if(!shown){
     const raw=d.raw||'';
@@ -12977,6 +12991,11 @@ function duplicateSubject(id){
 function handleGlobalFileDrop(file){
   if(!file)return;
   const nm=(file.name||'').toLowerCase();
+  if(file.type==='application/pdf'||(file.type&&file.type.startsWith('image/'))||/\.(pdf|jpe?g|png|webp)$/.test(nm)){
+    navTo('marks');
+    marksHandleFiles([file],undefined,true);
+    return;
+  }
   if(nm.endsWith('.json')){
     const rd=new FileReader();
     rd.onload=()=>{try{
