@@ -3718,6 +3718,25 @@ function viiSplitChecks(sum,vA){
   }catch(_){}
   return out;
 }
+function annexCalculationAudit(sum){
+  sum=sum||committeeSummary();
+  const T=t1Totals();
+  const checks=[];
+  const add=(label,actual,expected)=>checks.push({label,actual:Number(actual)||0,expected:Number(expected)||0,ok:(Number(actual)||0)===(Number(expected)||0)});
+  add('Table I earned = Table VII B',T.earned,axN('t7.B',sum.B));
+  add('Table I total = B + C + E',T.total,axN('t7.B',sum.B)+axN('t7.C',sum.C)+axN('t7.E',sum.E));
+  add('Table II total = Table VII C',axN('tot.t2',sum.C),axN('t7.C',sum.C));
+  add('Table III total = Table VII D',axN('tot.t3r',sum.D),axN('t7.D',sum.D));
+  add('Table IV total = Table VII E',axN('tot.t4',sum.E),axN('t7.E',sum.E));
+  const done=completedCreditsByBasket();
+  const viDone=basketKeys().reduce((a,k)=>a+axN('t6.'+k+'.done',done[k]||0),0);
+  const viRem=basketKeys().reduce((a,k)=>a+axN('t6.'+k+'.rem',Math.max(0,(basketMins()[k]||0)-(done[k]||0))),0);
+  add('Table VI completed = Table VII B',viDone,axN('t7.B',sum.B));
+  add('Table VI remaining = A - B',viRem,axN('t7.A',sum.A)-axN('t7.B',sum.B));
+  const vii= ['B','C','D','E','F'].reduce((a,k)=>a+axN('t7.'+k,sum[k]),0);
+  add('Table VII total = B + C + D + E + F',vii,axN('t7.A',sum.A));
+  return{checks,ok:checks.every(c=>c.ok),failed:checks.filter(c=>!c.ok)};
+}
 function viiSplitNote(sum,vA){
   const rows=viiSplitChecks(sum,vA); if(!rows.length)return '';
   vA=Number(vA)||(sum&&sum.A)||0;
@@ -11240,8 +11259,10 @@ function runAnnexCascade(){
     basketKeys().map(k=>k+' '+(done[k]||0)+'/'+(bks[k]||0)).join('  ')]);
   st.push(['VII','summary A–F recomputed',
     'B'+sum.B+' C'+sum.C+' D'+sum.D+' E'+sum.E+' F'+sum.F+' · total '+sum.total+' / A'+sum.A]);
+  const calcAudit=annexCalculationAudit(sum);
+  st.push(['✓','cross-table recalculation check',calcAudit.ok?'all totals agree':calcAudit.failed.length+' mismatch(es) — '+calcAudit.failed[0].label]);
   cascReport={when:new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}),st:st,
-              ok:sum.total>=sum.A};
+              ok:calcAudit.ok&&sum.total>=sum.A};
   const tray=poolVisibleChips().filter(c=>chipUnresolved(c)).length;
   logAction('⇊','Mapping cascade I→VII run');
   renderAll();saveState();
