@@ -6193,7 +6193,7 @@ function semNum(v){
   const r=ROMAN_SEM[String(v).trim().toUpperCase().replace(/^SEM(?:ESTER)?\s*/,'')];
   return r||null;
 }
-const IMPORT_KEYMAP={code:'code',subjectcode:'code',coursecode:'code',name:'name',subject:'name',subjectname:'name',coursename:'name',course:'name',coursetitle:'name',title:'name',sem:'sem',semester:'sem',credits:'credits',credit:'credits',c:'credits',cr:'credits',l:'L',t:'T',p:'P',ltpc:'ltpc',ltpcstructure:'ltpc',basket:'basket',coursebasket:'basket',category:'basket',coursecategory:'basket',type:'type',subjecttype:'type',status:'status',grade:'grade',gradeobtained:'grade',term:'term',passingterm:'term',monthyear:'term',semestermonthyear:'term',additional:'additional',programecode:'prog',programmecode:'prog',programcode:'prog',batch:'batch'};
+const IMPORT_KEYMAP={code:'code',subjectcode:'code',coursecode:'code',name:'name',subject:'name',subjectname:'name',coursename:'name',course:'name',coursetitle:'name',title:'name',sem:'sem',semester:'sem',credits:'credits',credit:'credits',c:'credits',cr:'credits',l:'L',t:'T',p:'P',ltpc:'ltpc',ltpcstructure:'ltpc',basket:'basket',coursebasket:'basket',category:'basket',coursecategory:'basket',type:'type',subjecttype:'type',status:'status',grade:'grade',gradeobtained:'grade',uopc:'uopc',uopccolumn:'uopc',term:'term',passingterm:'term',monthyear:'term',semestermonthyear:'term',additional:'additional',programecode:'prog',programmecode:'prog',programcode:'prog',batch:'batch'};
 function normalizeStatus(v){const s=String(v||'').trim().toLowerCase();
   if(['completed','passed','pass','cleared','done'].includes(s))return'completed';
   if(['failed','fail','f','backlog'].includes(s))return'failed';
@@ -6239,7 +6239,7 @@ function rowsFromObjects(objs){
     const num=v=>(v===''||v===undefined||v===null)?'':(parseInt(v)||0);
     const sub={name,code:String(r.code||'').trim().toUpperCase(),sem,credits:isNaN(credits)?0:credits,
       L:num(L),T:num(T),P:num(P),type,basket:normalizeBasket(r.basket,type,name),
-      status:normalizeStatus(r.status),grade:String(r.grade||'').trim().toUpperCase(),
+      status:normalizeStatus(r.status),grade:String(r.grade||'').trim().toUpperCase(),uopc:String(r.uopc||'').trim(),
       term:String(r.term||'').trim(),
       additional:['1','true','yes','y'].includes(String(r.additional||'').trim().toLowerCase())};
     if(sub.status==='np'&&!sub.grade)sub.grade='NP';
@@ -6284,7 +6284,7 @@ function parseWorkbookRows(wb,fileSem){
       const sm=first.match(/^sem(?:ester)?\s*\.?\s*[-:]?\s*(\d)\b/i);
       if(sm&&!code&&!nameV){curSem=parseInt(sm[1]);continue;}                  // "Semester N" section row
       if(!code&&!nameV)continue;
-      const o={Code:code,Name:nameV,L:val(row,'L'),T:val(row,'T'),P:val(row,'P'),Credits:val(row,'credits'),
+      const o={Code:code,Name:nameV,L:val(row,'L'),T:val(row,'T'),P:val(row,'P'),Credits:val(row,'credits'),UOPC:val(row,'uopc'),
         LTPC:val(row,'ltpc'),Basket:val(row,'basket'),Type:val(row,'type'),Status:val(row,'status'),
         Grade:val(row,'grade'),Term:val(row,'term'),Additional:val(row,'additional'),
         __prog:String(val(row,'prog')||'').trim(),__batch:String(val(row,'batch')||'').trim()};
@@ -7399,7 +7399,7 @@ function marksHandleFiles(files,slotIdx,stayOnMarks){
           return{code:String(o['Course Code']||o.Code||o.code||'').toUpperCase().trim(),
             name:String(o['Course Name']||o.Name||o.name||'').trim(),
             credits:parseFloat(o.Credits||o.credits||o.C||0)||0,
-            grade:g2,term:String(o.Term||o.term||'').trim(),
+            grade:g2,uopc:String(o.UOPC||o.uopc||'').trim(),term:String(o.Term||o.term||'').trim(),
             sem:parseInt(o.Semester||o.Sem||o.sem)||null};
         }).filter(c=>c.code||c.name);
         finish(courses,courses.find(c=>c.sem)?courses.find(c=>c.sem).sem:null,'','','sheet','');
@@ -7478,13 +7478,14 @@ function mvRenderRows(){
   const P=document.getElementById('mvParsed');
   const cell=(v,cls)=>String(v===undefined||v===null?'':v).replace(/"/g,'&quot;');
   const inp=(ri,field,val,w,ph)=>`<input class="form-input mono mv-cell" style="height:26px;padding:2px 6px;font-size:11.5px;width:${w}" value="${cell(val)}" placeholder="${ph||''}" onchange="mvEdit(${ri},'${field}',this.value)"/>`;
-  P.innerHTML=`<table class="report-table"><thead><tr><th style="width:44px">Sem</th><th>Code</th><th>Course name</th><th style="width:52px">Cr</th><th style="width:60px">Grade</th><th style="width:24px"></th></tr></thead><tbody>
+  P.innerHTML=`<table class="report-table"><thead><tr><th style="width:44px">Sem</th><th>Code</th><th>Course name</th><th style="width:52px">Cr</th><th style="width:60px">Grade</th><th style="width:70px">UOPC</th><th style="width:24px"></th></tr></thead><tbody>
     ${d.courses.map((c,ri)=>`<tr>
       <td>${inp(ri,'sem',c.sem,'36px','—')}</td>
       <td>${inp(ri,'code',c.code,'86px','CSE1001')}</td>
       <td>${inp(ri,'name',c.name,'100%','Course name')}</td>
       <td>${inp(ri,'credits',c.credits,'40px','0')}</td>
       <td>${inp(ri,'grade',c.grade,'46px','A+')}</td>
+      <td>${inp(ri,'uopc',c.uopc,'62px','UOPC')}</td>
       <td><button class="chip-x" title="Delete this row" onclick="mvDeleteRow(${ri})">✕</button></td>
     </tr>`).join('')}
     </tbody></table>
@@ -7497,6 +7498,7 @@ function mvEdit(ri,field,val){
   else if(field==='sem')val=val?(parseInt(val)||null):null;
   else if(field==='grade')val=String(val||'').toUpperCase().trim();
   else if(field==='code')val=String(val||'').toUpperCase().trim();
+  else if(field==='uopc')val=String(val||'').trim();
   d.courses[ri][field]=val;
   saveState();renderMarksPage();   // refresh the slot card's course count behind the modal; leave the table alone so focus isn't lost mid-edit
 }
@@ -7507,7 +7509,7 @@ function mvDeleteRow(ri){
 }
 function mvAddRow(){
   const d=marksData[mvSlot];if(!d)return;
-  d.courses.push({code:'',name:'',credits:0,grade:'',term:(d.courses[0]&&d.courses[0].term)||'',sem:d.semHint||null});
+  d.courses.push({code:'',name:'',credits:0,grade:'',uopc:'',term:(d.courses[0]&&d.courses[0].term)||'',sem:d.semHint||null});
   if(!d.file)d.file='(manual entry)';
   if(!d.kind)d.kind='manual';
   saveState();mvRenderRows();renderMarksPage();
@@ -7523,7 +7525,7 @@ function marksCommitAll(){
   const all=marksData.flatMap(d=>d.courses.map(c=>({...c,__src:d.label})));
   if(!all.length){toast('No parsed courses yet — drop grade cards into the slots first','error');return;}
   window.__marksSrc={};all.forEach(c=>{if(c.code&&!window.__marksSrc[c.code])window.__marksSrc[c.code]=c.__src;});
-  const objs=all.map(c=>({Code:c.code,Name:c.name,Semester:c.sem||'',Credits:c.credits,Grade:c.grade,Term:c.term||''}));
+  const objs=all.map(c=>({Code:c.code,Name:c.name,Semester:c.sem||'',Credits:c.credits,Grade:c.grade,UOPC:c.uopc||'',Term:c.term||''}));
   importMode=marksTarget;
   importRows=rowsFromObjects(objs);
   if(marksTarget==='register'){
@@ -7694,8 +7696,8 @@ function renderMarksPage(){
   const pv=document.getElementById('marksPreview');
   pv.innerHTML=all.length?`<div class="report-card"><div class="report-card-head"><div class="report-card-title">Parsed courses — ${all.length}</div>
     <div class="report-card-sub">${all.filter(c=>c.grade==='F'||c.grade==='NP').length} F/NP · from ${marksData.filter(d=>d.courses.length).length} sheet(s) · check, then commit below</div></div>
-    <div class="table-wrap"><table class="report-table"><thead><tr><th>Sem</th><th>Code</th><th>Course</th><th>Credits</th><th>Grade</th><th>Term</th></tr></thead><tbody>
-    ${all.map(c=>`<tr><td class="mono">${c.sem?('S'+c.sem):'—'}</td><td class="mono">${c.code}</td><td>${c.name}</td><td class="mono">${c.credits}</td><td class="mono" style="font-weight:600;color:${(c.grade==='F'||c.grade==='NP')?'var(--red)':'var(--green)'}">${c.grade}</td><td style="font-size:10.5px">${c.term||'—'}</td></tr>`).join('')}
+    <div class="table-wrap"><table class="report-table"><thead><tr><th>Sem</th><th>Code</th><th>Course</th><th>Credits</th><th>Grade</th><th>UOPC</th><th>Term</th></tr></thead><tbody>
+    ${all.map(c=>`<tr><td class="mono">${c.sem?('S'+c.sem):'—'}</td><td class="mono">${c.code}</td><td>${c.name}</td><td class="mono">${c.credits}</td><td class="mono" style="font-weight:600;color:${(c.grade==='F'||c.grade==='NP')?'var(--red)':'var(--green)'}">${c.grade}</td><td class="mono">${c.uopc||'—'}</td><td style="font-size:10.5px">${c.term||'—'}</td></tr>`).join('')}
     </tbody></table></div></div>`:'';
   const bar=document.getElementById('marksBar');
   bar.innerHTML=`<span style="font-size:12px;font-weight:600">🎯 Send parsed courses to:</span>
@@ -8071,7 +8073,7 @@ function marksAutoAbsorb(){
     // U (Audited Satisfactorily): no degree credit, not part of the mapping → Table V (removal list)
     if(String(c.grade||'').toUpperCase()==='U'){
       if(!oldPrcPool.some(p=>(p.code||'').toUpperCase()===key)&&!byCode[key]){
-        oldPrcPool.push(enrichOld({id:nextChipId++,code:c.code,name:c.name||'Course',L:0,T:0,P:0,C:Number(c.credits)||0,sem:Number(c.sem)||null,grade:c.grade,term:c.term||'',src:c.__src,basket:'',mappedEq:null}));
+        oldPrcPool.push(enrichOld({id:nextChipId++,code:c.code,name:c.name||'Course',L:0,T:0,P:0,C:Number(c.credits)||0,sem:Number(c.sem)||null,grade:c.grade,term:c.term||'',uopc:c.uopc||'',src:c.__src,basket:'',mappedEq:null}));
         t5n++;
       }
       return;
@@ -8080,7 +8082,7 @@ function marksAutoAbsorb(){
     // for drag-mapping onto a Table I row (failed ones still go to Table II below)
     if(!byCode[key]&&(prcLocked()||subjects.some(s2=>s2.plan))&&(gradeToStatus(c.grade)||'completed')==='completed'){
       if(!oldPrcPool.some(p=>(p.code||'').toUpperCase()===key)){
-        oldPrcPool.push(enrichOld({id:nextChipId++,code:c.code,name:c.name||'Course',L:0,T:0,P:0,C:Number(c.credits)||0,sem:Number(c.sem)||null,grade:c.grade||'',term:c.term||'',src:c.__src,basket:'',mappedEq:null}));
+        oldPrcPool.push(enrichOld({id:nextChipId++,code:c.code,name:c.name||'Course',L:0,T:0,P:0,C:Number(c.credits)||0,sem:Number(c.sem)||null,grade:c.grade||'',term:c.term||'',uopc:c.uopc||'',src:c.__src,basket:'',mappedEq:null}));
         trayN++;
       }
       return;
@@ -8092,6 +8094,7 @@ function marksAutoAbsorb(){
       const wasClear=isClearable(ex);
       if(c.grade){ex.grade=c.grade;ex.status=gradeToStatus(c.grade)||ex.status;}
       if(c.term)ex.term=c.term;
+      if(c.uopc!==undefined)ex.uopc=String(c.uopc||'').trim();
       if(!(prcLocked()&&ex.plan)){                    // never overwrite the locked blueprint
         if(Number(c.credits))ex.credits=Number(c.credits);
         if(c.name)ex.name=c.name;
@@ -8110,7 +8113,7 @@ function marksAutoAbsorb(){
       credits:Number(c.credits)||(_g?_g.C:0)||0,sem:sm,type:'core',
       status:(gradeToStatus(c.grade)||'completed'),grade:c.grade||'',
       basket:(_g&&_g.basket)||'PC',L:_g?_g.L:0,T:_g?_g.T:0,P:_g?_g.P:0,
-      term:c.term||'',additional:false,src:c.__src,prcSrc:_g?_g.src:''};
+      term:c.term||'',uopc:c.uopc||'',additional:false,src:c.__src,prcSrc:_g?_g.src:''};
     if(prcLocked()){lockedOut++;lockedOutCodes.push(c.code+(c.name?' ('+c.name+')':''));return;}          // v7.65: a locked grid is not widened by an upload
     subjects.push(ns);byCode[key]=ns;
     if(!isClearable(ns))identityMapSubject(ns);else failed++;
