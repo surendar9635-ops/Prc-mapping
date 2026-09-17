@@ -732,8 +732,8 @@ body.pre-auth .topbar,body.pre-auth .main,body.pre-auth #gcatFab,body.pre-auth #
     <h1>Presidency University <span style="font-family:'IBM Plex Sans',sans-serif;font-size:10.5px;font-weight:400;color:var(--ink4);letter-spacing:.2px;margin-left:8px">Developed by Surendar R S</span></h1>
   </div>
   <div class="topbar-nav">
-    <button class="nav-btn active" data-page="dashboard" onclick="showPage('dashboard',this)">Dashboard</button>
-  <button class="nav-btn" data-page="annexure" onclick="showPage('annexure',this)">📋 Annexure Form</button>
+    <button class="nav-btn" data-page="dashboard" onclick="showPage('dashboard',this)">Dashboard</button>
+  <button class="nav-btn active" data-page="annexure" onclick="showPage('annexure',this)">📋 Annexure Form</button>
   <button class="nav-btn" data-page="marks" onclick="showPage('marks',this)">📑 Marks Sheets</button>
     <button class="nav-btn" data-page="subjects" onclick="showPage('subjects',this)">All Subjects</button>
     <button class="nav-btn" data-page="board" onclick="showPage('board',this)">Planner Board</button>
@@ -1282,7 +1282,7 @@ body.pre-auth .topbar,body.pre-auth .main,body.pre-auth #gcatFab,body.pre-auth #
 </div>
 
 <!-- v5.4: ANNEXURE FORM (official paper layout, drag & drop) -->
-<div class="page" id="page-annexure">
+<div class="page active" id="page-annexure">
   <div class="page-header">
     <div class="ph-row">
       <div>
@@ -13459,6 +13459,7 @@ applyTheme(settings.theme);
 updateProfileChip();
 applySettingsToUI();
 renderAll();
+showPage('annexure', document.querySelector(".nav-btn[data-page='annexure']"));
 try{const _vf=document.getElementById('appVerFoot');if(_vf)_vf.textContent=APP_VERSION;}catch(e){}
 try{applyTabVisibility();}catch(e){}      // v7.55: the committee tab set, on boot
 (async()=>{
