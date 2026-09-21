@@ -7435,14 +7435,15 @@ function marksHandleFiles(files,slotIdx,stayOnMarks){
     if(nm.endsWith('.pdf')){
       rd.onload=async()=>{try{
         const text=extractPdfText(rd.result);
-        let ocrText='';
-        if(!text.trim()){
+        let sourceText=text, p=parseGradeCardText(text,slotIdx!==undefined&&slotIdx!==null?marksData[slotIdx].semHint:null);
+        if(!p.courses.length){
           toast('Scanned PDF detected — reading it with OCR…','info');
-          ocrText=await ocrScannedDocument(f,(status)=>{if(status==='recognizing text')toast('OCR is reading '+f.name+'…','info');});
+          const ocrText=await ocrScannedDocument(f,(status)=>{if(status==='recognizing text')toast('OCR is reading '+f.name+'…','info');});
+          const ocrParsed=parseGradeCardText(ocrText,slotIdx!==undefined&&slotIdx!==null?marksData[slotIdx].semHint:null);
+          if(ocrParsed.courses.length){sourceText=ocrText;p=ocrParsed;}
         }
-        const p=parseGradeCardText(text.trim()?text:ocrText,slotIdx!==undefined&&slotIdx!==null?marksData[slotIdx].semHint:null);
         if(p.who)applyStudentFromSheet(p.who);
-        finish(p.courses,p.sem,p.term,p.courses.length?'':'OCR could not find course rows — open the sheet to review','pdf',text.trim()?text:ocrText);
+        finish(p.courses,p.sem,p.term,p.courses.length?'':'OCR could not find course rows — open the sheet to review','pdf',sourceText);
       }catch(e){finish([],null,'','Could not read PDF/OCR — open the sheet to review','pdf','');toast('Could not OCR '+f.name+': '+(e.message||'unknown error'),'error');}};
       rd.readAsArrayBuffer(f);
     }else if(f.type&&f.type.startsWith('image/')){
