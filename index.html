@@ -3734,9 +3734,14 @@ function annexCalculationAudit(sum){
   add('Table IV total = Table VII E',axN('tot.t4',sum.E),axN('t7.E',sum.E));
   const done=completedCreditsByBasket();
   const viDone=basketKeys().reduce((a,k)=>a+axN('t6.'+k+'.done',done[k]||0),0);
+  const viRemExpected=basketKeys().reduce(function(a,k){
+    const min=axN('t6.'+k+'.min',basketMins()[k]||0);
+    const completed=axN('t6.'+k+'.done',done[k]||0);
+    return a+Math.max(0,min-completed);
+  },0);
   const viRem=basketKeys().reduce((a,k)=>a+axN('t6.'+k+'.rem',Math.max(0,(basketMins()[k]||0)-(done[k]||0))),0);
   add('Table VI completed = Table VII B',viDone,axN('t7.B',sum.B));
-  add('Table VI remaining = A - B',viRem,axN('t7.A',sum.A)-axN('t7.B',sum.B));
+  add('Table VI remaining matches basket deficits',viRem,viRemExpected);
   const vii= ['B','C','D','E','F'].reduce((a,k)=>a+axN('t7.'+k,sum[k]),0);
   add('Table VII total = B + C + D + E + F',vii,axN('t7.A',sum.A));
   return{checks,ok:checks.every(c=>c.ok),failed:checks.filter(c=>!c.ok)};
@@ -12196,7 +12201,9 @@ ${t1CancelCount()?`<button class="cxpill" title="${t1CancelCount()} course(s) ta
     ${chk('Table VI minimum column totals to A',t6Tmin===vA,t6Tmin+' vs '+vA)}
     ${chk('Table VI “credits completed” = B',t6Tdone===vB,
           t6Tdone+' vs '+vB+' — this column is Table I’s earned figure; exempted credits are carried by D')}
-    ${chk('Table VI “to be completed” totals to A − B',t6Trem===(vA-vB),t6Trem+' vs '+(vA-vB))}
+    ${chk('Table VI remaining matches basket deficits',t6Trem===t6cr.reduce(function(a,r){
+      return a+Math.max(0,axN(r.p+'.min',r.a.min)-axN(r.p+'.done',r.a.done));
+    },0),t6Trem+' cr across baskets')}
     ${chk('Table II total = C',axN('tot.t2',t2Total)===vC,axN('tot.t2',t2Total)+' vs '+vC)}
     ${chk('Table III total = D',axN('tot.t3r',t3Total)===vD,axN('tot.t3r',t3Total)+' vs '+vD)}
     ${chk('Table IV total = E',t4tot===vE,t4tot+' vs '+vE)}
